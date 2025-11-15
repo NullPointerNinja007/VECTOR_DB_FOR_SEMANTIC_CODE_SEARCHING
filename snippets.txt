@@ -1,0 +1,376 @@
+UUID: snippet_fastapi_register_user_v1
+DESCRIPTION: FastAPI route that registers a user, checks for duplicate emails, hashes the password, and returns a response object.
+CODE:
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+import hashlib
+
+router = APIRouter()
+users = {}
+
+class UserIn(BaseModel):
+    email: str
+    password: str
+
+@router.post("/register")
+def register(user: UserIn):
+    if user.email in users:
+        raise HTTPException(status_code=409, detail="Email already exists")
+
+    hashed = hashlib.sha256(user.password.encode()).hexdigest()
+    users[user.email] = {"email": user.email, "password": hashed}
+
+    return {"status": "registered", "email": user.email}
+===END_SNIPPET===
+
+UUID: snippet_flask_login_route_v1
+DESCRIPTION: Flask route that logs a user in by validating the email and password against an in-memory dictionary.
+CODE:
+from flask import Flask, request, jsonify
+
+app = Flask(__name__)
+
+db = {
+    "alice@example.com": "hashed_pw_123",
+    "bob@example.com": "hashed_pw_aaa"
+}
+
+@app.post("/login")
+def login():
+    data = request.json or {}
+    email = data.get("email")
+    password = data.get("password")
+
+    if email not in db:
+        return jsonify({"error": "user not found"}), 404
+
+    if password != "password123":
+        return jsonify({"error": "invalid credentials"}), 401
+
+    return jsonify({"message": "login ok", "email": email})
+===END_SNIPPET===
+
+UUID: snippet_django_create_user_v1
+DESCRIPTION: Django ORM function that creates a user with a hashed password and raises an exception if the email is already taken.
+CODE:
+from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
+from django.contrib.auth.hashers import make_password
+
+def create_user_account(email: str, password: str):
+    if User.objects.filter(email=email).exists():
+        raise ValidationError("User already exists")
+
+    user = User.objects.create(
+        username=email,
+        email=email,
+        password=make_password(password)
+    )
+    return user
+===END_SNIPPET===
+
+UUID: snippet_node_express_signup_v1
+DESCRIPTION: Express.js signup route that validates input, checks email uniqueness, hashes password, and stores user in memory.
+CODE:
+const express = require("express");
+const router = express.Router();
+const crypto = require("crypto");
+
+const users = {};
+
+router.post("/signup", (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password)
+    return res.status(400).json({ error: "missing fields" });
+
+  if (users[email]) {
+    return res.status(409).json({ error: "email already exists" });
+  }
+
+  const hash = crypto.createHash("sha256").update(password).digest("hex");
+  users[email] = { email, password: hash };
+
+  return res.json({ status: "created", email });
+});
+
+module.exports = router;
+===END_SNIPPET===
+
+UUID: snippet_sqlalchemy_user_model_v2
+DESCRIPTION: SQLAlchemy ORM model for a user table with unique email and hashed password fields for authentication systems.
+CODE:
+from sqlalchemy import Column, Integer, String
+from sqlalchemy.orm import declarative_base
+
+Base = declarative_base()
+
+class User(Base):
+    __tablename__ = "auth_users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, index=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
+
+    def to_dict(self):
+        return {"id": self.id, "email": self.email}
+===END_SNIPPET===
+
+UUID: snippet_pid_motor_control_cpp_v1
+DESCRIPTION: C++ PID controller that computes motor output using proportional, integral, and derivative components for velocity regulation.
+CODE:
+class PIDController {
+public:
+    PIDController(double kp, double ki, double kd)
+        : kp(kp), ki(ki), kd(kd), prevError(0), integral(0) {}
+
+    double compute(double target, double current, double dt) {
+        double error = target - current;
+        integral += error * dt;
+        double derivative = (error - prevError) / dt;
+        prevError = error;
+        return kp * error + ki * integral + kd * derivative;
+    }
+
+private:
+    double kp, ki, kd;
+    double prevError;
+    double integral;
+};
+===END_SNIPPET===
+
+UUID: snippet_imu_calibration_python_v1
+DESCRIPTION: Python function that gathers IMU samples, computes mean bias for accelerometer and gyroscope, and returns calibration offsets.
+CODE:
+import numpy as np
+
+def calibrate_imu(samples):
+    """
+    samples: list of dicts with keys ax, ay, az, gx, gy, gz
+    returns calibration offsets
+    """
+    acc = np.array([[s["ax"], s["ay"], s["az"]] for s in samples])
+    gyro = np.array([[s["gx"], s["gy"], s["gz"]] for s in samples])
+
+    acc_bias = acc.mean(axis=0)
+    gyro_bias = gyro.mean(axis=0)
+
+    return {"acc_bias": acc_bias.tolist(),
+            "gyro_bias": gyro_bias.tolist()}
+===END_SNIPPET===
+
+UUID: snippet_encoder_counts_to_rpm_v1
+DESCRIPTION: Python utility that converts encoder pulse counts into wheel RPM using counts-per-rev and sampling interval.
+CODE:
+def encoder_to_rpm(pulses, counts_per_rev, dt):
+    revs = pulses / counts_per_rev
+    rpm = (revs / dt) * 60.0
+    return rpm
+===END_SNIPPET===
+
+UUID: snippet_lidar_outlier_filter_v1
+DESCRIPTION: Function that filters noisy LiDAR distance readings using median filtering followed by threshold-based outlier rejection.
+CODE:
+import numpy as np
+
+def filter_lidar_readings(distances, threshold=0.15):
+    """
+    distances: list of float lidar readings
+    threshold: relative deviation allowed from median
+    """
+    med = np.median(distances)
+    filtered = [d for d in distances if abs(d - med) / med < threshold]
+    return filtered
+===END_SNIPPET===
+
+UUID: snippet_ros2_twist_publisher_v1
+DESCRIPTION: ROS2 Python node that publishes Twist velocity commands at 10Hz for robot motion control.
+CODE:
+import rclpy
+from rclpy.node import Node
+from geometry_msgs.msg import Twist
+
+class VelocityPublisher(Node):
+    def __init__(self):
+        super().__init__("velocity_publisher")
+        self.publisher = self.create_publisher(Twist, "/cmd_vel", 10)
+        self.timer = self.create_timer(0.1, self.publish_velocity)
+
+    def publish_velocity(self):
+        msg = Twist()
+        msg.linear.x = 0.2
+        msg.angular.z = 0.1
+        self.publisher.publish(msg)
+
+def main():
+    rclpy.init()
+    node = VelocityPublisher()
+    rclpy.spin(node)
+    node.destroy_node()
+    rclpy.shutdown()
+===END_SNIPPET===
+
+UUID: snippet_orderbook_add_bid_v1
+DESCRIPTION: Python function that inserts a bid order into an order book sorted by descending price and preserves price-time priority.
+CODE:
+def add_bid(orderbook, price, size, order_id):
+    """
+    orderbook: list of dicts with keys price, size, order_id
+    bids sorted by descending price, FIFO within price level
+    """
+    inserted = False
+    for i, order in enumerate(orderbook):
+        if price > order["price"]:
+            orderbook.insert(i, {"price": price, "size": size, "order_id": order_id})
+            inserted = True
+            break
+    if not inserted:
+        orderbook.append({"price": price, "size": size, "order_id": order_id})
+    return orderbook
+===END_SNIPPET===
+
+UUID: snippet_orderbook_match_market_buy_v1
+DESCRIPTION: Function that matches a market buy order against the ask side of an order book until size is exhausted or liquidity is depleted.
+CODE:
+def match_market_buy(asks, size):
+    """
+    asks: list of dicts with price, size (ascending order)
+    size: market order size
+    returns trades and updated asks
+    """
+    trades = []
+    i = 0
+    while size > 0 and i < len(asks):
+        level = asks[i]
+        trade_size = min(size, level["size"])
+        trades.append({"price": level["price"], "size": trade_size})
+        level["size"] -= trade_size
+        size -= trade_size
+        if level["size"] == 0:
+            i += 1
+        else:
+            break
+    return trades, asks[i:]
+===END_SNIPPET===
+
+UUID: snippet_vwap_calculation_v1
+DESCRIPTION: Computes VWAP (volume-weighted average price) over a stream of trades using cumulative price–volume products.
+CODE:
+def compute_vwap(trades):
+    """
+    trades: list of dicts with keys price and size
+    returns volume-weighted average price
+    """
+    total_vol = sum(t["size"] for t in trades)
+    if total_vol == 0:
+        return 0
+    pv = sum(t["price"] * t["size"] for t in trades)
+    return pv / total_vol
+===END_SNIPPET===
+
+UUID: snippet_spread_calculator_v1
+DESCRIPTION: Function that computes bid-ask spread from the best bid and best ask in an order book snapshot.
+CODE:
+def compute_spread(bids, asks):
+    """
+    bids: list sorted by descending price
+    asks: list sorted by ascending price
+    returns (spread, best_bid, best_ask)
+    """
+    if not bids or not asks:
+        return None, None, None
+    best_bid = bids[0]["price"]
+    best_ask = asks[0]["price"]
+    return best_ask - best_bid, best_bid, best_ask
+===END_SNIPPET===
+
+UUID: snippet_ema_orderflow_imbalance_v1
+DESCRIPTION: Computes exponential moving average of order flow imbalance using buy volume minus sell volume to signal market pressure.
+CODE:
+def ema_imbalance(prev, buy_vol, sell_vol, alpha=0.2):
+    """
+    prev: previous imbalance EMA
+    buy_vol: volume of buy trades
+    sell_vol: volume of sell trades
+    alpha: smoothing factor
+    """
+    raw = buy_vol - sell_vol
+    return alpha * raw + (1 - alpha) * prev
+===END_SNIPPET===
+
+UUID: snippet_orderbook_cancel_order_v1
+DESCRIPTION: Removes an order from a one-sided order book list by order_id while preserving remaining price-time priority.
+CODE:
+def cancel_order(book, order_id):
+    """
+    book: list of dicts with keys price, size, order_id
+    order_id: id of order to remove
+    returns updated book
+    """
+    return [o for o in book if o["order_id"] != order_id]
+===END_SNIPPET===
+
+UUID: snippet_orderbook_depth_at_price_v1
+DESCRIPTION: Aggregates total size available at a given price level in the order book.
+CODE:
+def depth_at_price(book, price):
+    """
+    book: list of dicts with keys price, size
+    price: price level to query
+    returns cumulative size at that price
+    """
+    return sum(o["size"] for o in book if o["price"] == price)
+===END_SNIPPET===
+
+UUID: snippet_orderbook_top_n_levels_v1
+DESCRIPTION: Returns the top N levels of bids and asks from full depth order books.
+CODE:
+def top_n_levels(bids, asks, n=5):
+    """
+    bids: list sorted by descending price
+    asks: list sorted by ascending price
+    n: number of levels to return
+    """
+    return bids[:n], asks[:n]
+===END_SNIPPET===
+
+UUID: snippet_midprice_series_volatility_v1
+DESCRIPTION: Computes realized volatility of midprice series over a window using log returns.
+CODE:
+import math
+
+def realized_volatility(midprices):
+    """
+    midprices: list of mid prices in time order
+    returns realized volatility (standard deviation of log returns)
+    """
+    if len(midprices) < 2:
+        return 0.0
+    log_rets = []
+    for i in range(1, len(midprices)):
+        if midprices[i-1] <= 0 or midprices[i] <= 0:
+            continue
+        r = math.log(midprices[i] / midprices[i-1])
+        log_rets.append(r)
+    if not log_rets:
+        return 0.0
+    mean_r = sum(log_rets) / len(log_rets)
+    var = sum((r - mean_r) ** 2 for r in log_rets) / len(log_rets)
+    return var ** 0.5
+===END_SNIPPET===
+
+UUID: snippet_trade_imbalance_over_window_v1
+DESCRIPTION: Computes trade imbalance over a window as (buy volume – sell volume) divided by total volume.
+CODE:
+def trade_imbalance(trades):
+    """
+    trades: list of dicts with keys side ('B' or 'S') and size
+    returns imbalance in [-1, 1]
+    """
+    buy_vol = sum(t["size"] for t in trades if t["side"] == "B")
+    sell_vol = sum(t["size"] for t in trades if t["side"] == "S")
+    total = buy_vol + sell_vol
+    if total == 0:
+        return 0.0
+    return (buy_vol - sell_vol) / total
+===END_SNIPPET===
