@@ -32,8 +32,20 @@ if not _api_key:
 _client = OpenAI(api_key=_api_key)
 
 # ChromaDB client configuration
+# Supports both local (PersistentClient) and remote (HttpClient) modes
 _CHROMA_DB_PATH = "./chroma_db"
-_chroma_client = chromadb.PersistentClient(path=_CHROMA_DB_PATH)
+_CHROMA_SERVER_HOST = os.getenv("CHROMA_SERVER_HOST")  # e.g., "localhost" or "your-chromadb-server.com"
+_CHROMA_SERVER_PORT = os.getenv("CHROMA_SERVER_PORT", "8000")
+
+# Use HttpClient if CHROMA_SERVER_HOST is set (for serverless/production)
+# Otherwise use PersistentClient (for local development)
+if _CHROMA_SERVER_HOST:
+    _chroma_client = chromadb.HttpClient(
+        host=_CHROMA_SERVER_HOST,
+        port=int(_CHROMA_SERVER_PORT)
+    )
+else:
+    _chroma_client = chromadb.PersistentClient(path=_CHROMA_DB_PATH)
 
 
 def generate_compact_code_description(
@@ -185,7 +197,7 @@ def index_snippet_in_chroma(
 
 def search_similar_snippets(
     query: str,
-    k: int = 5,
+    k: int = 1,
 ) -> list[str]:
     """
     Search for similar code snippets in ChromaDB using a text query.
@@ -197,7 +209,7 @@ def search_similar_snippets(
     
     Args:
         query: Text query string to search for
-        k: Number of top results to return (default: 5)
+        k: Number of top results to return (default: 1)
         
     Returns:
         List of UUIDs ranked by similarity (most similar first).
